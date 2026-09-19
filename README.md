@@ -32,13 +32,15 @@ vercel dev
 
 ```env
 OPENAI_API_KEY=실제_키를_여기에_입력
+# 교육장 전용 Base URL을 받은 경우에만 설정
+OPENAI_BASE_URL=https://교육장에서_받은_Base_URL
 ```
 
 ## 배포
 
 1. GitHub에 `CodysseyA1-3` 공개 저장소를 만들고 코드를 push합니다.
 2. Vercel에서 **Continue with GitHub**으로 가입한 뒤 저장소를 Import합니다.
-3. Project Settings → Environment Variables에 `OPENAI_API_KEY`를 추가합니다.
+3. Project Settings → Environment Variables에 `OPENAI_API_KEY`를 추가합니다. 교육장 전용 Public API Base URL을 받은 경우 `OPENAI_BASE_URL`도 추가합니다.
 4. Deploy 후 README의 배포 URL을 실제 주소로 교체합니다.
 
 ## 보안과 개인정보

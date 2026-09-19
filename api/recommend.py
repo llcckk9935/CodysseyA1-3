@@ -53,7 +53,11 @@ class handler(BaseHTTPRequestHandler):
             payload = json.loads(self.rfile.read(size).decode('utf-8'))
             if not payload.get('ingredients') or not payload.get('servings'):
                 self._send(400, {"message":"꼭 쓰고 싶은 재료와 인원수를 입력해 주세요."}); return
-            client = OpenAI(api_key=os.environ['OPENAI_API_KEY'])
+            # Optional for the education-provider gateway. If absent, the official OpenAI endpoint is used.
+            client_options = {"api_key": os.environ['OPENAI_API_KEY']}
+            if os.getenv('OPENAI_BASE_URL'):
+                client_options["base_url"] = os.environ['OPENAI_BASE_URL']
+            client = OpenAI(**client_options)
             user_input = json.dumps(payload, ensure_ascii=False)
             response = client.responses.create(model="gpt-5-mini", reasoning={"effort":"low"}, max_output_tokens=1800, input=[{"role":"system","content":SYSTEM},{"role":"user","content":f"다음 사용자 입력으로 추천해줘: {user_input}"}], text={"format":{"type":"json_schema","name":"quick_recipe_recommendation","strict":True,"schema":SCHEMA}})
             result = json.loads(response.output_text)
