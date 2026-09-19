@@ -61,5 +61,6 @@ OPENAI_BASE_URL=https://교육장에서_받은_Base_URL
 ├── docs/service-plan.md   # 서비스 기획서
 ├── index.html
 ├── requirements.txt
+├── pyproject.toml         # Vercel Python 함수 진입점
 └── .env.example
 ```
