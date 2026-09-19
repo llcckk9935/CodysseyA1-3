@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="남은 냉장고 재료로 초보자도 따라 할 수 있는 한 끼 레시피를 추천받으세요." />
+  <script>
+    (() => { const t = localStorage.getItem('naryori-theme'); document.documentElement.dataset.theme = t || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); })();
+  </script>
+  <link rel="stylesheet" href="css/style.css" />
+  <title>나를 요리해줘 | 냉장고 재료 AI 레시피</title>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+  <header class="site-header">
+    <a class="brand" href="#home" aria-label="나를 요리해줘 홈">나를 <span>요리해줘</span></a>
+    <nav aria-label="주요 메뉴"><a href="#home">홈</a><a href="#recommend">레시피 추천</a><a href="#saved">나의 레시피</a><a href="#guide">이용 안내</a></nav>
+    <button class="icon-button" id="theme-toggle" type="button" aria-label="다크 모드로 전환" aria-pressed="false">◐</button>
+  </header>
+
+  <main id="main">
+    <section id="home" class="hero section">
+      <div class="hero-copy"><p class="eyebrow">냉장고 속 남은 재료, 오늘의 한 끼로</p><h1>지금 있는 재료로<br><em>나를 요리해줘.</em></h1><p class="hero-text">처치 곤란한 재료를 입력하면, AI가 초보자도 따라 할 수 있는 간단한 한 끼 레시피 2개를 제안해요.</p><a class="primary-button" href="#recommend">레시피 추천받기 <span aria-hidden="true">→</span></a></div>
+      <aside class="hero-preview" aria-label="레시피 입력과 결과 예시"><div class="preview-top">냉장고 한 켠의 당근</div><p class="input-example">당근 1개 · 한식 · 1인</p><div class="mini-card"><span class="badge">AI 추천 예시</span><h2>당근 달걀볶음밥</h2><p>15분 · 초보 · 프라이팬</p></div></aside>
+    </section>
+
+    <section id="recommend" class="section recommend-section">
+      <div class="section-heading"><p class="eyebrow">AI 레시피 추천</p><h2>남은 재료를 알려주세요</h2><p>입력한 모든 핵심 재료를 포함하는 레시피 2개를 추천해 드려요.</p></div>
+      <form id="recipe-form" novalidate>
+        <div class="form-grid">
+          <div class="field field-wide"><label for="ingredients">꼭 쓰고 싶은 재료 <strong>(필수)</strong></label><textarea id="ingredients" name="ingredients" rows="3" placeholder="예: 당근 1개, 달걀 2개" aria-describedby="ingredients-help"></textarea><p id="ingredients-help" class="field-help">수량은 선택이에요. 입력한 식재료는 모두 레시피에 포함합니다.</p></div>
+          <div class="field"><label for="servings">인원수 <strong>(필수)</strong></label><select id="servings" name="servings"><option value="">선택해 주세요</option><option value="1">1인</option><option value="2">2인</option><option value="3">3인</option><option value="4">4인 이상</option></select></div>
+          <fieldset class="field"><legend>요리 스타일 <span>(선택)</span></legend><div class="chips" data-group="cuisine"><button type="button" class="chip is-selected" data-value="상관없음">상관없음</button><button type="button" class="chip" data-value="한식">한식</button><button type="button" class="chip" data-value="일식">일식</button><button type="button" class="chip" data-value="양식">양식</button></div></fieldset>
+          <fieldset class="field"><legend>메뉴 형태 <span>(선택)</span></legend><div class="chips" data-group="mealType"><button type="button" class="chip is-selected" data-value="상관없음">상관없음</button><button type="button" class="chip" data-value="밥">밥</button><button type="button" class="chip" data-value="면">면</button><button type="button" class="chip" data-value="국·찌개">국·찌개</button><button type="button" class="chip" data-value="가벼운 한 끼">가벼운 한 끼</button></div></fieldset>
+          <fieldset class="field field-wide"><legend>식단 제한 <span>(선택)</span></legend><div class="chips selectable" data-tags="dietary"><button type="button" class="chip" data-value="채식">채식</button><button type="button" class="chip" data-value="비건">비건</button><button type="button" class="chip" data-value="저염">저염</button><button type="button" class="chip" data-value="글루텐 제한">글루텐 제한</button></div><label class="sr-only" for="dietary-custom">식단 제한 직접 입력</label><input id="dietary-custom" placeholder="예: 채식이지만 달걀은 가능" /><div class="tag-list" id="dietary-tags" aria-live="polite"></div></fieldset>
+          <fieldset class="field field-wide"><legend>알레르기 주의 재료 <span>(선택)</span></legend><div class="chips selectable" data-tags="allergies"><button type="button" class="chip" data-value="달걀">달걀</button><button type="button" class="chip" data-value="우유">우유</button><button type="button" class="chip" data-value="땅콩">땅콩</button><button type="button" class="chip" data-value="견과류">견과류</button><button type="button" class="chip" data-value="대두">대두</button><button type="button" class="chip" data-value="밀">밀</button><button type="button" class="chip" data-value="메밀">메밀</button><button type="button" class="chip" data-value="생선">생선</button><button type="button" class="chip" data-value="갑각류">갑각류</button><button type="button" class="chip" data-value="오징어">오징어</button><button type="button" class="chip" data-value="조개류">조개류</button><button type="button" class="chip" data-value="참깨">참깨</button></div><label class="sr-only" for="allergy-custom">알레르기 재료 직접 입력</label><input id="allergy-custom" placeholder="칩에 없는 주의 재료를 입력하고 Enter" /><div class="tag-list" id="allergy-tags" aria-live="polite"></div></fieldset>
+        </div>
+        <p class="privacy-note">입력한 재료·식단·알레르기 정보는 AI 추천 생성에만 전송됩니다. 이름·연락처·의료기록 등 개인정보는 입력하지 마세요.</p>
+        <p class="form-message" id="form-message" role="alert"></p><button class="primary-button submit-button" type="submit"><span>AI 레시피 2개 추천받기</span><span aria-hidden="true">✦</span></button>
+      </form>
+      <div id="loading" class="loading" hidden role="status"><div class="spinner"></div><p>재료를 맛있는 한 끼로 바꾸고 있어요.</p><small id="loading-detail">조금만 기다려 주세요.</small></div>
+      <div id="result" class="result" aria-live="polite"></div>
+    </section>
+
+    <section id="saved" class="section saved-section"><div class="section-heading"><p class="eyebrow">나의 레시피</p><h2>다시 만들고 싶은 한 끼</h2><p>저장한 레시피는 이 브라우저에만 보관돼요.</p></div><div id="saved-list" class="saved-list"></div></section>
+
+    <section id="guide" class="section guide-section"><div class="section-heading"><p class="eyebrow">이용 안내</p><h2>맛있고 안전한 한 끼를 위해</h2></div><div class="guide-grid"><article><h3>추천 기준</h3><p>입력한 핵심 재료를 모두 활용하며, 소금·후추·식용유 외의 추가 재료는 레시피당 최대 2개까지만 제안합니다. 조리 도구와 예상 시간은 추정치입니다.</p></article><article><h3>알레르기·식단</h3><p>AI는 성분표·가공식품·교차오염을 완전히 확인할 수 없습니다. 제한 정보를 반영하려 노력하지만, 섭취 전 포장지와 성분표를 직접 확인하세요.</p></article><article><h3>식재료 안전</h3><p>유통기한·보관 상태·변질 여부는 판단할 수 없습니다. 이상이 의심되는 재료는 사용하지 말고, 생고기·달걀은 충분히 익혀 드세요.</p></article><article><h3>정보 처리</h3><p>입력값은 추천 생성 목적으로만 AI API에 전송하며 서버에 별도로 저장하지 않습니다. 저장 레시피와 테마 설정은 로그인 계정이 아닌 내 브라우저에 보관됩니다. <a href="https://openai.com/policies/privacy-policy/" target="_blank" rel="noopener">AI 제공사 개인정보 처리방침 보기</a></p></article></div></section>
+  </main>
+  <footer>© 2026 나를 요리해줘 · 냉장고 속 재료를 오늘의 한 끼로</footer>
+  <dialog id="delete-dialog"><h2>저장한 레시피를 삭제할까요?</h2><p>삭제하면 이 브라우저에서 복구할 수 없어요.</p><div class="dialog-actions"><button class="secondary-button" id="cancel-delete">취소</button><button class="danger-button" id="confirm-delete">삭제</button></div></dialog>
+  <template id="recipe-template"><article class="recipe-card"><div class="card-top"><span class="badge recipe-number"></span><button class="save-button" type="button">♡ 저장</button></div><h3 class="recipe-name"></h3><p class="recipe-reason"></p><div class="notice allergy-notice"></div><div class="meta"></div><div class="card-section"><h4>핵심 재료 사용량</h4><ul class="usage-list"></ul></div><div class="card-section"><h4>추가로 필요한 재료 <small>(최대 2개)</small></h4><ul class="additional-list"></ul><p class="optional-list"></p></div><div class="card-section"><h4>조리 순서</h4><ol class="steps-list"></ol></div><p class="safety-note">변질 의심 식재료는 사용하지 마세요. 알레르기 성분과 교차오염은 직접 확인해 주세요.</p></article></template>
+  <script src="js/app.js"></script>
+</body>
+</html>
