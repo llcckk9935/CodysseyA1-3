@@ -93,15 +93,15 @@ class handler(BaseHTTPRequestHandler):
             response = client.chat.completions.create(
                 model="gpt-5-mini",
                 max_tokens=1800,
-                response_format={"type": "json_object"},
                 messages=[
                     {"role": "system", "content": SYSTEM + "\n반드시 다음 JSON Schema의 모든 필드를 반환한다: " + schema_hint},
                     {"role": "user", "content": f"다음 사용자 입력으로 추천해줘: {user_input}"},
                 ],
             )
             raw_output = response.choices[0].message.content or ""
-            if raw_output.startswith("```"):
-                raw_output = raw_output.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+            json_start, json_end = raw_output.find("{"), raw_output.rfind("}")
+            if json_start >= 0 and json_end > json_start:
+                raw_output = raw_output[json_start:json_end + 1]
             try:
                 result = json.loads(raw_output)
             except json.JSONDecodeError:
