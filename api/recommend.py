@@ -83,7 +83,8 @@ def response_text(message):
 def fallback_result(payload):
     """Offer reviewed recipes only; never invent a generic dish from a name."""
     ingredients = [item.strip() for item in re.split(r"[,，]", payload.get("ingredients", "")) if item.strip()]
-    if len(ingredients) != 1 or payload.get("dietary") or payload.get("allergies"):
+    dietary = [item for item in payload.get("dietary", []) if item != "제한 없음"]
+    if len(ingredients) != 1 or dietary or payload.get("allergies"):
         return {"status": "invalid", "message": "AI 응답이 비어 있고, 이 입력에는 안전하게 검토한 대체 레시피가 없어요. 잠시 후 다시 시도해 주세요.", "recognized_ingredients": [], "overall_note": "", "recipes": []}
     ingredient = ingredients[0]
     recipe_options = None
