@@ -1,5 +1,7 @@
 import json
 import os
+import re
+import uuid
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import urlparse
@@ -21,8 +23,65 @@ SCHEMA = {
     }, "required": ["status", "message", "recognized_ingredients", "overall_note", "recipes"]
 }
 
-SYSTEM = """당신은 한국의 요리 초보자를 위한 안전 중심 냉장고 레시피 플래너다. 반드시 마크다운 없이 유효한 한국어 JSON만 반환한다. 첫 글자는 {, 마지막 글자는 }여야 하며 JSON 외 텍스트를 절대 쓰지 않는다.
-규칙: (1) 입력한 핵심 재료를 두 레시피 모두 반드시 포함한다. 전량 소진을 약속하지 말고 실제 사용량을 쓴다. 단위 비교가 어려우면 remaining은 '계산 어려움', 수량이 없으면 '수량 미입력'으로 쓴다. (2) 소금·후추·식용유 외 모든 재료는 additional_ingredients에 세며, 레시피별 최대 2개다. 간장·밥·면·달걀은 기본 재료가 아니다. 대체재는 A 또는 B 한 항목으로 쓴다. (3) 선택 고명은 optional_garnish로만 넣고 없어도 완성 가능해야 한다. (4) 각 레시피는 초보자가 따라 할 4개 조리 단계로 쓴다. 각 단계는 55자 이내로 불·시간·완료 상태를 짧게 포함한다. 생고기·달걀은 충분한 가열을 명시한다. (5) 프라이팬·냄비 등 일반 조리도구만 우선 사용하고 tools에 표시한다. (6) 알레르기와 식단 제한 및 연관 식재료(우유-버터/치즈, 대두-간장 등)를 보수적으로 검토한다. 충돌하거나 불확실하면 안전하다고 단정하지 않는다. 핵심 재료와 제한이 충돌하면 status='conflict', recipes=[]로 하고 수정 방법을 message에 쓴다. (7) 식재료명이 아니거나 모호하면 status='invalid', recipes=[]로 하고 재입력을 요청한다. (8) 조건을 만족하는 간단한 한 끼 2개를 만들 수 없으면 status='invalid'로 안내한다. (9) status='ok'일 때 recipes는 정확히 2개, 각 ingredient_usage는 모든 핵심 재료를 포함한다. reason·restriction_note는 각각 45자 이내로 쓴다."""
+SYSTEM = """당신은 한국의 요리 초보자를 위한 안전 중심 냉장고 레시피 플래너다. JSON이나 마크다운 코드 블록을 쓰지 말고 아래의 한국어 라벨 형식을 정확히 따른다.
+규칙: 입력한 핵심 재료를 두 레시피 모두 반드시 포함한다. 소금·후추·식용유 외 모든 재료는 추가 재료이며 레시피별 최대 2개다. 간장·밥·면·달걀은 기본 재료가 아니다. 조리 단계는 4개, 각 단계는 짧고 불·시간·완료 상태를 포함한다. 알레르기·식단 제한 및 우유-버터/치즈, 대두-간장 같은 연관 재료를 보수적으로 피한다. 생고기·달걀은 충분한 가열을 쓴다.
+정상일 때는 다음 형식의 레시피 2개만 출력한다. 모든 라벨을 빠뜨리지 않는다.
+[레시피 1]
+메뉴명: 짧은 메뉴명
+추천 이유: 짧은 이유
+시간: 15분
+난이도: 쉬움
+도구: 프라이팬, 냄비
+제한 안내: 반영한 제한과 성분표·교차오염 확인 안내
+핵심 재료 사용량: 재료 | 사용량 | 예상 잔량; 재료 | 사용량 | 예상 잔량
+추가 재료: 재료 또는 없음
+선택 재료: 재료 또는 없음
+조리 순서:
+1. 첫 단계
+2. 둘째 단계
+3. 셋째 단계
+4. 넷째 단계
+[레시피 2]
+(위와 같은 라벨과 형식)
+핵심 재료와 제한이 충돌하거나 식재료명이 모호하면 레시피 대신 아래 형식만 출력한다.
+[오류]
+유형: conflict 또는 invalid
+메시지: 사용자가 수정할 방법"""
+
+def label_value(block, label, default=""):
+    match = re.search(rf"^\s*{re.escape(label)}:\s*(.+?)\s*$", block, re.MULTILINE)
+    return match.group(1).strip() if match else default
+
+def split_items(value):
+    if not value or value in {"없음", "해당 없음"}:
+        return []
+    return [item.strip() for item in re.split(r"[,，]", value) if item.strip()]
+
+def parse_labelled_result(raw_output, payload):
+    error_type = label_value(raw_output, "유형")
+    if "[오류]" in raw_output and error_type in {"conflict", "invalid"}:
+        return {"status": error_type, "message": label_value(raw_output, "메시지", "입력 정보를 수정해 주세요."), "recognized_ingredients": [], "overall_note": "", "recipes": []}
+    blocks = re.split(r"\[레시피\s*[12]\]", raw_output)
+    recipe_blocks = [block for block in blocks[1:] if block.strip()]
+    if len(recipe_blocks) != 2:
+        return None
+    recipes = []
+    for block in recipe_blocks:
+        usage = []
+        for item in label_value(block, "핵심 재료 사용량").split(";"):
+            parts = [part.strip() for part in item.split("|")]
+            if len(parts) >= 2 and parts[0]:
+                usage.append({"ingredient": parts[0], "amount": parts[1], "remaining": parts[2] if len(parts) >= 3 else "계산 어려움"})
+        steps = re.findall(r"^\s*\d+[.)]\s*(.+?)\s*$", block, re.MULTILINE)
+        recipes.append({
+            "id": str(uuid.uuid4()), "name": label_value(block, "메뉴명"), "reason": label_value(block, "추천 이유"),
+            "time": label_value(block, "시간"), "difficulty": label_value(block, "난이도"),
+            "tools": split_items(label_value(block, "도구")), "restriction_note": label_value(block, "제한 안내"),
+            "ingredient_usage": usage, "additional_ingredients": split_items(label_value(block, "추가 재료")),
+            "optional_garnish": label_value(block, "선택 재료"), "steps": steps,
+        })
+    recognized = [item.strip() for item in re.split(r"[,，]", payload.get("ingredients", "")) if item.strip()]
+    return {"status": "ok", "message": "", "recognized_ingredients": recognized, "overall_note": "입력한 핵심 재료를 모두 포함하도록 추천했어요.", "recipes": recipes}
 
 def is_valid_result(result):
     """Prevent an incomplete structured response from reaching the browser."""
@@ -92,22 +151,17 @@ class handler(BaseHTTPRequestHandler):
             client_options["max_retries"] = 0
             client = OpenAI(**client_options)
             user_input = json.dumps(payload, ensure_ascii=False)
-            schema_hint = json.dumps(SCHEMA, ensure_ascii=False)
             response = client.chat.completions.create(
                 model="gpt-5-mini",
                 max_tokens=2400,
                 messages=[
-                    {"role": "system", "content": SYSTEM + "\n반드시 다음 JSON Schema의 모든 필드를 반환한다: " + schema_hint},
+                    {"role": "system", "content": SYSTEM},
                     {"role": "user", "content": f"다음 사용자 입력으로 추천해줘: {user_input}"},
                 ],
             )
             raw_output = response.choices[0].message.content or ""
-            json_start, json_end = raw_output.find("{"), raw_output.rfind("}")
-            if json_start >= 0 and json_end > json_start:
-                raw_output = raw_output[json_start:json_end + 1]
-            try:
-                result = json.loads(raw_output)
-            except json.JSONDecodeError:
+            result = parse_labelled_result(raw_output, payload)
+            if not result:
                 self._send(502, {"message":"AI가 레시피 결과를 읽을 수 있는 형식으로 만들지 못했어요. 다시 시도해 주세요."}); return
             if not is_valid_result(result):
                 self._send(502, {"message":"추천 결과가 기준을 충족하지 못했어요. 다시 시도해 주세요."}); return
