@@ -57,6 +57,29 @@ def split_items(value):
         return []
     return [item.strip() for item in re.split(r"[,，]", value) if item.strip()]
 
+def response_text(message):
+    """Read text from both standard and OpenAI-compatible gateway messages."""
+    content = getattr(message, "content", None)
+    if isinstance(content, str):
+        return content.strip()
+    if isinstance(content, list):
+        parts = []
+        for item in content:
+            if isinstance(item, str):
+                parts.append(item)
+            elif isinstance(item, dict):
+                parts.append(str(item.get("text") or item.get("content") or ""))
+            else:
+                parts.append(str(getattr(item, "text", "") or getattr(item, "content", "")))
+        return "\n".join(part for part in parts if part).strip()
+
+    # Some education gateways expose the generated text in this extension
+    # instead of the standard Chat Completions content field.
+    alternative = getattr(message, "reasoning_content", None)
+    if isinstance(alternative, str) and "[레시피" in alternative:
+        return alternative.strip()
+    return ""
+
 def parse_labelled_result(raw_output, payload):
     error_type = label_value(raw_output, "유형")
     if "[오류]" in raw_output and error_type in {"conflict", "invalid"}:
@@ -153,13 +176,16 @@ class handler(BaseHTTPRequestHandler):
             user_input = json.dumps(payload, ensure_ascii=False)
             response = client.chat.completions.create(
                 model="gpt-5-mini",
-                max_tokens=2400,
+                # GPT-5 uses part of this budget for reasoning. Low effort leaves
+                # enough tokens for the two recipe cards on supported gateways.
+                max_tokens=3000,
+                reasoning_effort="low",
                 messages=[
                     {"role": "system", "content": SYSTEM},
                     {"role": "user", "content": f"다음 사용자 입력으로 추천해줘: {user_input}"},
                 ],
             )
-            raw_output = response.choices[0].message.content or ""
+            raw_output = response_text(response.choices[0].message)
             result = parse_labelled_result(raw_output, payload)
             if not result:
                 if raw_output.strip():
