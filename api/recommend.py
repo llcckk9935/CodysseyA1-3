@@ -90,8 +90,8 @@ def fallback_result(payload):
         "status": "ok", "message": "", "recognized_ingredients": ingredients,
         "overall_note": "AI 응답이 비어 있어 입력 재료로 만든 기본 조리안을 먼저 보여드려요.",
         "recipes": [
-            {"id": str(uuid.uuid4()), "name": f"{ingredient_names} 간단 볶음", "reason": "입력한 재료를 한 팬에서 익히는 가장 간단한 방법이에요.", "time": "15분", "difficulty": "쉬움", "tools": ["프라이팬"], "restriction_note": restriction_note, "ingredient_usage": usage, "additional_ingredients": [], "optional_garnish": "없음", "steps": [f"중불 프라이팬에 {ingredient_names}을(를) 넣고 2분간 볶아요.", "중약불로 줄여 물기가 나오면 뒤집어 5분간 익혀요.", "속까지 충분히 익고 수분이 줄면 불을 꺼요.", "간은 제한 식단과 알레르기 정보를 확인한 뒤 조절해요."]},
-            {"id": str(uuid.uuid4()), "name": f"{ingredient_names} 담백 찜", "reason": "기름을 쓰지 않고 재료의 수분으로 부드럽게 익힐 수 있어요.", "time": "20분", "difficulty": "쉬움", "tools": ["냄비", "뚜껑"], "restriction_note": restriction_note, "ingredient_usage": usage, "additional_ingredients": [], "optional_garnish": "없음", "steps": [f"냄비에 {ingredient_names}을(를) 넣고 물 3큰술을 더해요.", "뚜껑을 덮고 중약불에서 8분간 익혀요.", "뚜껑을 열어 뒤집고 5분 더 익혀 속까지 확인해요.", "재료가 충분히 익으면 불을 끄고 2분간 두었다가 담아요."]},
+            {"id": str(uuid.uuid4()), "name": f"{ingredient_names} 소금후추 볶음", "reason": "식용유와 기본 간만으로 재료의 단맛을 살린 한 팬 요리예요.", "time": "15분", "difficulty": "쉬움", "tools": ["프라이팬"], "restriction_note": restriction_note, "ingredient_usage": usage, "additional_ingredients": [], "optional_garnish": "없음", "steps": [f"{ingredient_names}을(를) 한입 크기로 썰고 물기를 닦아요.", "프라이팬을 중불로 1분 예열한 뒤 식용유 1큰술을 둘러요.", f"재료를 넣고 소금 2꼬집, 후추 2번을 뿌려 5~7분 볶아요.", "가장 두꺼운 재료까지 충분히 익으면 맛을 보고 소금으로 간을 맞춰요."]},
+            {"id": str(uuid.uuid4()), "name": f"{ingredient_names} 촉촉한 물찜", "reason": "적은 물과 기본 간으로 부드럽게 익혀 곁들이기 좋아요.", "time": "18분", "difficulty": "쉬움", "tools": ["냄비", "뚜껑"], "restriction_note": restriction_note, "ingredient_usage": usage, "additional_ingredients": [], "optional_garnish": "없음", "steps": [f"냄비에 {ingredient_names}을(를) 한입 크기로 넣고 식용유 1작은술을 버무려요.", "물 4큰술과 소금 2꼬집을 넣고 뚜껑을 덮어요.", "중약불에서 8분 익힌 뒤 뒤집고 후추를 뿌려 4분 더 익혀요.", "가장 두꺼운 재료까지 충분히 익었는지 확인한 뒤 맛을 보고 간을 맞춰요."]},
         ],
     }
 
