@@ -1,0 +1,6 @@
+.raw-text {
+  white-space: pre-wrap;
+  line-height: 1.8;
+  color: var(--text);
+  font-size: .92rem;
+}
