@@ -16,7 +16,7 @@
 
 - Frontend: HTML, CSS, Vanilla JavaScript
 - Backend: Vercel Serverless Functions (Python)
-- AI: OpenAI Responses API, `gpt-5-mini`, Structured Outputs
+- AI: OpenAI 호환 Chat Completions API, `gpt-5-mini`, JSON 응답 검증
 - Deploy: Vercel
 
 ## 로컬 실행

@@ -21,7 +21,7 @@ SCHEMA = {
     }, "required": ["status", "message", "recognized_ingredients", "overall_note", "recipes"]
 }
 
-SYSTEM = """당신은 한국의 요리 초보자를 위한 안전 중심 냉장고 레시피 플래너다. 반드시 한국어 JSON만 반환한다.
+SYSTEM = """당신은 한국의 요리 초보자를 위한 안전 중심 냉장고 레시피 플래너다. 반드시 마크다운 없이 유효한 한국어 JSON만 반환한다.
 규칙: (1) 입력한 핵심 재료를 두 레시피 모두 반드시 포함한다. 전량 소진을 약속하지 말고 실제 사용량을 쓴다. 단위 비교가 어려우면 remaining은 '계산 어려움', 수량이 없으면 '수량 미입력'으로 쓴다. (2) 소금·후추·식용유 외 모든 재료는 additional_ingredients에 세며, 레시피별 최대 2개다. 간장·밥·면·달걀은 기본 재료가 아니다. 대체재는 A 또는 B 한 항목으로 쓴다. (3) 선택 고명은 optional_garnish로만 넣고 없어도 완성 가능해야 한다. (4) 최대 5개 조리 단계로, 각 단계는 필요한 불·시간·완료 상태를 짧게 포함한다. 생고기·달걀은 충분한 가열을 명시한다. (5) 프라이팬·냄비 등 일반 조리도구만 우선 사용하고 tools에 표시한다. (6) 알레르기와 식단 제한 및 연관 식재료(우유-버터/치즈, 대두-간장 등)를 보수적으로 검토한다. 충돌하거나 불확실하면 안전하다고 단정하지 않는다. 핵심 재료와 제한이 충돌하면 status='conflict', recipes=[]로 하고 수정 방법을 message에 쓴다. (7) 식재료명이 아니거나 모호하면 status='invalid', recipes=[]로 하고 재입력을 요청한다. (8) 조건을 만족하는 간단한 한 끼 2개를 만들 수 없으면 status='invalid'로 안내한다. (9) status='ok'일 때 recipes는 정확히 2개, 각 ingredient_usage는 모든 핵심 재료를 포함한다. restriction_note에는 반영을 시도한 제한과 성분표/교차오염 직접 확인 경고를 쓴다."""
 
 def is_valid_result(result):
@@ -86,8 +86,19 @@ class handler(BaseHTTPRequestHandler):
                 client_options["base_url"] = os.environ['OPENAI_BASE_URL']
             client = OpenAI(**client_options)
             user_input = json.dumps(payload, ensure_ascii=False)
-            response = client.responses.create(model="gpt-5-mini", reasoning={"effort":"low"}, max_output_tokens=1800, input=[{"role":"system","content":SYSTEM},{"role":"user","content":f"다음 사용자 입력으로 추천해줘: {user_input}"}], text={"format":{"type":"json_schema","name":"quick_recipe_recommendation","strict":True,"schema":SCHEMA}})
-            result = json.loads(response.output_text)
+            schema_hint = json.dumps(SCHEMA, ensure_ascii=False)
+            response = client.chat.completions.create(
+                model="gpt-5-mini",
+                max_tokens=1800,
+                messages=[
+                    {"role": "system", "content": SYSTEM + "\n반드시 다음 JSON Schema의 모든 필드를 반환한다: " + schema_hint},
+                    {"role": "user", "content": f"다음 사용자 입력으로 추천해줘: {user_input}"},
+                ],
+            )
+            raw_output = response.choices[0].message.content or ""
+            if raw_output.startswith("```"):
+                raw_output = raw_output.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+            result = json.loads(raw_output)
             if not is_valid_result(result):
                 self._send(502, {"message":"추천 결과가 기준을 충족하지 못했어요. 다시 시도해 주세요."}); return
             self._send(200, result)
