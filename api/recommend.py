@@ -166,7 +166,7 @@ class handler(BaseHTTPRequestHandler):
                     self._send(200, {"status": "raw", "message": "", "recognized_ingredients": [item.strip() for item in re.split(r"[,，]", payload["ingredients"]) if item.strip()], "overall_note": "AI가 제안한 원문 레시피예요. 성분표와 알레르기 정보를 직접 확인해 주세요.", "raw_text": raw_output}); return
                 self._send(502, {"message":"AI가 빈 응답을 반환했어요. 잠시 후 다시 시도해 주세요."}); return
             if not is_valid_result(result):
-                self._send(502, {"message":"추천 결과가 기준을 충족하지 못했어요. 다시 시도해 주세요."}); return
+                self._send(200, {"status": "raw", "message": "", "recognized_ingredients": [item.strip() for item in re.split(r"[,，]", payload["ingredients"]) if item.strip()], "overall_note": "AI가 제안한 원문 레시피예요. 성분표와 알레르기 정보를 직접 확인해 주세요.", "raw_text": raw_output}); return
             self._send(200, result)
         except ValueError: self._send(400, {"message":"요청 형식을 읽지 못했어요. 다시 시도해 주세요."})
         except RateLimitError: self._send(429, {"message":"추천 요청이 많아요. 잠시 후 다시 시도해 주세요."})
