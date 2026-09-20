@@ -1,6 +1,8 @@
 import json
 import os
 from http.server import BaseHTTPRequestHandler
+from pathlib import Path
+from urllib.parse import urlparse
 from openai import OpenAI, APIError, APIConnectionError, RateLimitError
 
 SCHEMA = {
@@ -39,6 +41,31 @@ def is_valid_result(result):
     return True
 
 class handler(BaseHTTPRequestHandler):
+    STATIC_FILES = {
+        "/": ("index.html", "text/html; charset=utf-8"),
+        "/index.html": ("index.html", "text/html; charset=utf-8"),
+        "/css/style.css": ("css/style.css", "text/css; charset=utf-8"),
+        "/js/app.js": ("js/app.js", "application/javascript; charset=utf-8"),
+    }
+
+    def do_GET(self):
+        """Serve the vanilla frontend when this Python entrypoint owns the root route."""
+        path = urlparse(self.path).path
+        asset = self.STATIC_FILES.get(path)
+        if not asset:
+            self._send(404, {"message": "요청한 페이지를 찾을 수 없어요."})
+            return
+        file_path = Path(__file__).resolve().parent.parent / asset[0]
+        try:
+            body = file_path.read_bytes()
+            self.send_response(200)
+            self.send_header('Content-Type', asset[1])
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        except OSError:
+            self._send(500, {"message": "화면 파일을 불러오지 못했어요."})
+
     def _send(self, status, data):
         body = json.dumps(data, ensure_ascii=False).encode('utf-8')
         self.send_response(status); self.send_header('Content-Type', 'application/json; charset=utf-8'); self.send_header('Content-Length', str(len(body))); self.end_headers(); self.wfile.write(body)
