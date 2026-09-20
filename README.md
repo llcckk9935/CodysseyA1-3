@@ -2,7 +2,7 @@
 
 냉장고에 남은 핵심 재료로 요리 초보자를 위한 간단한 한 끼 레시피 2개를 추천하는 AI 웹 서비스입니다.
 
-> 배포 URL: https://codyssey-a1-3-1rlfjtlv8-codyssey-a1-3.vercel.app/
+> 배포 URL: https://codyssey-a1-3-g8ohna8tw-codyssey-a1-3.vercel.app/
 
 ## 주요 기능
 
