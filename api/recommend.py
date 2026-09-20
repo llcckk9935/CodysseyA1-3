@@ -81,18 +81,31 @@ def response_text(message):
     return ""
 
 def fallback_result(payload):
-    """Keep the service useful when a compatible gateway returns no text."""
+    """Offer reviewed recipes only; never invent a generic dish from a name."""
     ingredients = [item.strip() for item in re.split(r"[,，]", payload.get("ingredients", "")) if item.strip()]
-    ingredient_names = ", ".join(ingredients)
+    if len(ingredients) != 1 or payload.get("dietary") or payload.get("allergies"):
+        return {"status": "invalid", "message": "AI 응답이 비어 있고, 이 입력에는 안전하게 검토한 대체 레시피가 없어요. 잠시 후 다시 시도해 주세요.", "recognized_ingredients": [], "overall_note": "", "recipes": []}
+    ingredient = ingredients[0]
+    recipe_options = None
+    if "양배추" in ingredient:
+        recipe_options = [
+            {"name": "양배추 달걀전", "reason": "양배추의 단맛과 달걀을 살린 바삭한 한 접시예요.", "time": "15분", "tools": ["프라이팬"], "additional_ingredients": ["달걀 2개", "부침가루 2큰술"], "steps": ["양배추를 가늘게 채 썰고 소금 1꼬집을 뿌려 5분 뒤 물기를 짜요.", "볼에 양배추, 달걀 2개, 부침가루 2큰술, 물 2큰술과 후추를 섞어요.", "중불 프라이팬에 식용유 1큰술을 두르고 반죽을 얇게 펴요.", "앞뒤로 각 3분씩 노릇하고 중심까지 뜨겁게 익으면 꺼내요."]},
+            {"name": "양배추 참치볶음", "reason": "참치의 감칠맛으로 양배추를 밥반찬으로 만들기 좋아요.", "time": "12분", "tools": ["프라이팬"], "additional_ingredients": ["참치캔 1/2캔", "진간장 1작은술"], "steps": ["양배추를 한입 크기로 썰고 참치캔은 기름을 빼요.", "중불 프라이팬에 식용유 1작은술을 두르고 양배추를 3분 볶아요.", "참치와 진간장 1작은술, 후추를 넣고 3분 더 볶아요.", "양배추가 숨이 죽고 가장 두꺼운 부분까지 부드러우면 불을 꺼요."]},
+        ]
+    elif "상추" in ingredient:
+        recipe_options = [
+            {"name": "상추 겉절이", "reason": "씻은 상추를 바로 무쳐 아삭하게 먹는 가장 잘 어울리는 메뉴예요.", "time": "8분", "tools": ["큰 볼"], "additional_ingredients": ["고춧가루 1큰술", "진간장 1작은술"], "steps": ["상추를 찬물에 씻어 물기를 완전히 털고 큰 것은 반으로 찢어요.", "볼에 진간장 1작은술, 고춧가루 1큰술, 참기름 1작은술을 섞어요.", "상추를 넣고 손으로 10초만 가볍게 버무려요.", "깨가 있으면 뿌리고, 숨이 죽기 전에 바로 담아 먹어요."]},
+            {"name": "상추 달걀국", "reason": "상추를 마지막에 넣어 부드럽고 향긋하게 먹는 따뜻한 국이에요.", "time": "12분", "tools": ["냄비", "국자"], "additional_ingredients": ["달걀 1개", "국간장 1작은술"], "steps": ["냄비에 물 400ml를 끓이고 국간장 1작은술과 소금 한 꼬집으로 간해요.", "달걀 1개를 풀어 끓는 물에 가늘게 돌려 넣고 1분 익혀요.", "상추를 크게 찢어 넣고 후추를 뿌린 뒤 30초만 더 끓여요.", "상추가 선명한 초록색을 유지할 때 바로 불을 꺼요."]},
+        ]
+    if not recipe_options:
+        return {"status": "invalid", "message": "AI 응답이 비어 있고, 이 재료에는 검토한 대체 레시피가 아직 없어요. 잠시 후 다시 시도해 주세요.", "recognized_ingredients": [], "overall_note": "", "recipes": []}
     usage = [{"ingredient": item, "amount": "준비한 양", "remaining": "조리 후 확인"} for item in ingredients]
     restriction_note = "알레르기·식단 제한 성분과 교차오염 여부는 조리 전 직접 확인하세요."
+    recipes = [{"id": str(uuid.uuid4()), "difficulty": "쉬움", "restriction_note": restriction_note, "ingredient_usage": usage, "optional_garnish": "없음", **option} for option in recipe_options]
     return {
         "status": "ok", "message": "", "recognized_ingredients": ingredients,
-        "overall_note": "AI 응답이 비어 있어 입력 재료로 만든 기본 조리안을 먼저 보여드려요.",
-        "recipes": [
-            {"id": str(uuid.uuid4()), "name": f"{ingredient_names} 소금후추 볶음", "reason": "식용유와 기본 간만으로 재료의 단맛을 살린 한 팬 요리예요.", "time": "15분", "difficulty": "쉬움", "tools": ["프라이팬"], "restriction_note": restriction_note, "ingredient_usage": usage, "additional_ingredients": [], "optional_garnish": "없음", "steps": [f"{ingredient_names}을(를) 한입 크기로 썰고 물기를 닦아요.", "프라이팬을 중불로 1분 예열한 뒤 식용유 1큰술을 둘러요.", f"재료를 넣고 소금 2꼬집, 후추 2번을 뿌려 5~7분 볶아요.", "가장 두꺼운 재료까지 충분히 익으면 맛을 보고 소금으로 간을 맞춰요."]},
-            {"id": str(uuid.uuid4()), "name": f"{ingredient_names} 촉촉한 물찜", "reason": "적은 물과 기본 간으로 부드럽게 익혀 곁들이기 좋아요.", "time": "18분", "difficulty": "쉬움", "tools": ["냄비", "뚜껑"], "restriction_note": restriction_note, "ingredient_usage": usage, "additional_ingredients": [], "optional_garnish": "없음", "steps": [f"냄비에 {ingredient_names}을(를) 한입 크기로 넣고 식용유 1작은술을 버무려요.", "물 4큰술과 소금 2꼬집을 넣고 뚜껑을 덮어요.", "중약불에서 8분 익힌 뒤 뒤집고 후추를 뿌려 4분 더 익혀요.", "가장 두꺼운 재료까지 충분히 익었는지 확인한 뒤 맛을 보고 간을 맞춰요."]},
-        ],
+        "overall_note": "AI 응답이 비어 있어 검토된 대체 레시피를 보여드려요.",
+        "recipes": recipes,
     }
 
 def parse_labelled_result(raw_output, payload):
