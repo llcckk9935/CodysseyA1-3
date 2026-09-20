@@ -77,7 +77,10 @@ class handler(BaseHTTPRequestHandler):
         try:
             size = int(self.headers.get('Content-Length', 0))
             if size > 12000: self._send(400, {"message":"입력 내용이 너무 길어요. 재료만 간단히 입력해 주세요."}); return
-            payload = json.loads(self.rfile.read(size).decode('utf-8'))
+            try:
+                payload = json.loads(self.rfile.read(size).decode('utf-8'))
+            except json.JSONDecodeError:
+                self._send(400, {"message":"입력 정보를 읽지 못했어요. 다시 입력해 주세요."}); return
             if not payload.get('ingredients') or not payload.get('servings'):
                 self._send(400, {"message":"꼭 쓰고 싶은 재료와 인원수를 입력해 주세요."}); return
             # Optional for the education-provider gateway. If absent, the official OpenAI endpoint is used.
@@ -90,6 +93,7 @@ class handler(BaseHTTPRequestHandler):
             response = client.chat.completions.create(
                 model="gpt-5-mini",
                 max_tokens=1800,
+                response_format={"type": "json_object"},
                 messages=[
                     {"role": "system", "content": SYSTEM + "\n반드시 다음 JSON Schema의 모든 필드를 반환한다: " + schema_hint},
                     {"role": "user", "content": f"다음 사용자 입력으로 추천해줘: {user_input}"},
@@ -98,11 +102,14 @@ class handler(BaseHTTPRequestHandler):
             raw_output = response.choices[0].message.content or ""
             if raw_output.startswith("```"):
                 raw_output = raw_output.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
-            result = json.loads(raw_output)
+            try:
+                result = json.loads(raw_output)
+            except json.JSONDecodeError:
+                self._send(502, {"message":"AI가 레시피 결과를 읽을 수 있는 형식으로 만들지 못했어요. 다시 시도해 주세요."}); return
             if not is_valid_result(result):
                 self._send(502, {"message":"추천 결과가 기준을 충족하지 못했어요. 다시 시도해 주세요."}); return
             self._send(200, result)
-        except (json.JSONDecodeError, ValueError): self._send(400, {"message":"요청 형식을 읽지 못했어요. 다시 시도해 주세요."})
+        except ValueError: self._send(400, {"message":"요청 형식을 읽지 못했어요. 다시 시도해 주세요."})
         except RateLimitError: self._send(429, {"message":"추천 요청이 많아요. 잠시 후 다시 시도해 주세요."})
         except APIStatusError as error:
             messages = {
