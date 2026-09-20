@@ -80,6 +80,21 @@ def response_text(message):
         return alternative.strip()
     return ""
 
+def fallback_result(payload):
+    """Keep the service useful when a compatible gateway returns no text."""
+    ingredients = [item.strip() for item in re.split(r"[,，]", payload.get("ingredients", "")) if item.strip()]
+    ingredient_names = ", ".join(ingredients)
+    usage = [{"ingredient": item, "amount": "준비한 양", "remaining": "조리 후 확인"} for item in ingredients]
+    restriction_note = "알레르기·식단 제한 성분과 교차오염 여부는 조리 전 직접 확인하세요."
+    return {
+        "status": "ok", "message": "", "recognized_ingredients": ingredients,
+        "overall_note": "AI 응답이 비어 있어 입력 재료로 만든 기본 조리안을 먼저 보여드려요.",
+        "recipes": [
+            {"id": str(uuid.uuid4()), "name": f"{ingredient_names} 간단 볶음", "reason": "입력한 재료를 한 팬에서 익히는 가장 간단한 방법이에요.", "time": "15분", "difficulty": "쉬움", "tools": ["프라이팬"], "restriction_note": restriction_note, "ingredient_usage": usage, "additional_ingredients": [], "optional_garnish": "없음", "steps": [f"중불 프라이팬에 {ingredient_names}을(를) 넣고 2분간 볶아요.", "중약불로 줄여 물기가 나오면 뒤집어 5분간 익혀요.", "속까지 충분히 익고 수분이 줄면 불을 꺼요.", "간은 제한 식단과 알레르기 정보를 확인한 뒤 조절해요."]},
+            {"id": str(uuid.uuid4()), "name": f"{ingredient_names} 담백 찜", "reason": "기름을 쓰지 않고 재료의 수분으로 부드럽게 익힐 수 있어요.", "time": "20분", "difficulty": "쉬움", "tools": ["냄비", "뚜껑"], "restriction_note": restriction_note, "ingredient_usage": usage, "additional_ingredients": [], "optional_garnish": "없음", "steps": [f"냄비에 {ingredient_names}을(를) 넣고 물 3큰술을 더해요.", "뚜껑을 덮고 중약불에서 8분간 익혀요.", "뚜껑을 열어 뒤집고 5분 더 익혀 속까지 확인해요.", "재료가 충분히 익으면 불을 끄고 2분간 두었다가 담아요."]},
+        ],
+    }
+
 def parse_labelled_result(raw_output, payload):
     error_type = label_value(raw_output, "유형")
     if "[오류]" in raw_output and error_type in {"conflict", "invalid"}:
@@ -199,7 +214,7 @@ class handler(BaseHTTPRequestHandler):
             if not result:
                 if raw_output.strip():
                     self._send(200, {"status": "raw", "message": "", "recognized_ingredients": [item.strip() for item in re.split(r"[,，]", payload["ingredients"]) if item.strip()], "overall_note": "AI가 제안한 원문 레시피예요. 성분표와 알레르기 정보를 직접 확인해 주세요.", "raw_text": raw_output}); return
-                self._send(502, {"message":"AI가 빈 응답을 반환했어요. 잠시 후 다시 시도해 주세요."}); return
+                self._send(200, fallback_result(payload)); return
             if not is_valid_result(result):
                 self._send(200, {"status": "raw", "message": "", "recognized_ingredients": [item.strip() for item in re.split(r"[,，]", payload["ingredients"]) if item.strip()], "overall_note": "AI가 제안한 원문 레시피예요. 성분표와 알레르기 정보를 직접 확인해 주세요.", "raw_text": raw_output}); return
             self._send(200, result)
