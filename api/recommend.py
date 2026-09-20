@@ -232,7 +232,18 @@ class handler(BaseHTTPRequestHandler):
                     raise
                 request_options.pop("reasoning_effort")
                 response = client.chat.completions.create(**request_options)
-            raw_output = response_text(response.choices[0].message)
+            choice = response.choices[0]
+            message = choice.message
+            raw_output = response_text(message)
+            print(json.dumps({
+                "event": "ai_gateway_response",
+                "model": getattr(response, "model", "unknown"),
+                "finish_reason": getattr(choice, "finish_reason", None),
+                "content_type": type(getattr(message, "content", None)).__name__,
+                "content_length": len(raw_output),
+                "has_refusal": bool(getattr(message, "refusal", None)),
+                "has_reasoning_content": bool(getattr(message, "reasoning_content", None)),
+            }, ensure_ascii=False))
             result = parse_labelled_result(raw_output, payload)
             if not result:
                 if raw_output.strip():
