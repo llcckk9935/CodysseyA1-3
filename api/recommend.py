@@ -174,7 +174,7 @@ class handler(BaseHTTPRequestHandler):
             client_options["max_retries"] = 0
             client = OpenAI(**client_options)
             user_input = json.dumps(payload, ensure_ascii=False)
-            response = client.chat.completions.create(
+            request_options = dict(
                 model="gpt-5-mini",
                 # GPT-5 uses part of this budget for reasoning. Low effort leaves
                 # enough tokens for the two recipe cards on supported gateways.
@@ -185,6 +185,15 @@ class handler(BaseHTTPRequestHandler):
                     {"role": "user", "content": f"다음 사용자 입력으로 추천해줘: {user_input}"},
                 ],
             )
+            try:
+                response = client.chat.completions.create(**request_options)
+            except APIStatusError as error:
+                # Several OpenAI-compatible education gateways reject GPT-5's
+                # optional reasoning parameter but accept the same chat request.
+                if error.status_code != 400:
+                    raise
+                request_options.pop("reasoning_effort")
+                response = client.chat.completions.create(**request_options)
             raw_output = response_text(response.choices[0].message)
             result = parse_labelled_result(raw_output, payload)
             if not result:
