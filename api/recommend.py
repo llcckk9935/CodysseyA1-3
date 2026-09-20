@@ -169,8 +169,8 @@ class handler(BaseHTTPRequestHandler):
             client_options = {"api_key": os.environ['OPENAI_API_KEY']}
             if os.getenv('OPENAI_BASE_URL'):
                 client_options["base_url"] = os.environ['OPENAI_BASE_URL']
-            # Finish before the browser's 45-second UX timeout.
-            client_options["timeout"] = 42.0
+            # Allow one retry while staying inside the browser's 45-second timeout.
+            client_options["timeout"] = 20.0
             client_options["max_retries"] = 0
             client = OpenAI(**client_options)
             user_input = json.dumps(payload, ensure_ascii=False)
@@ -182,19 +182,24 @@ class handler(BaseHTTPRequestHandler):
                     {"role": "user", "content": f"다음 사용자 입력으로 추천해줘: {user_input}"},
                 ],
             )
-            response = client.chat.completions.create(**request_options)
-            choice = response.choices[0]
-            message = choice.message
-            raw_output = response_text(message)
-            print(json.dumps({
-                "event": "ai_gateway_response",
-                "model": getattr(response, "model", "unknown"),
-                "finish_reason": getattr(choice, "finish_reason", None),
-                "content_type": type(getattr(message, "content", None)).__name__,
-                "content_length": len(raw_output),
-                "has_refusal": bool(getattr(message, "refusal", None)),
-                "has_reasoning_content": bool(getattr(message, "reasoning_content", None)),
-            }, ensure_ascii=False))
+            raw_output = ""
+            for attempt in range(1, 3):
+                response = client.chat.completions.create(**request_options)
+                choice = response.choices[0]
+                message = choice.message
+                raw_output = response_text(message)
+                print(json.dumps({
+                    "event": "ai_gateway_response",
+                    "attempt": attempt,
+                    "model": getattr(response, "model", "unknown"),
+                    "finish_reason": getattr(choice, "finish_reason", None),
+                    "content_type": type(getattr(message, "content", None)).__name__,
+                    "content_length": len(raw_output),
+                    "has_refusal": bool(getattr(message, "refusal", None)),
+                    "has_reasoning_content": bool(getattr(message, "reasoning_content", None)),
+                }, ensure_ascii=False))
+                if raw_output:
+                    break
             result = parse_labelled_result(raw_output, payload)
             if not result:
                 if raw_output.strip():
