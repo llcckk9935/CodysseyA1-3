@@ -87,8 +87,8 @@ class handler(BaseHTTPRequestHandler):
             client_options = {"api_key": os.environ['OPENAI_API_KEY']}
             if os.getenv('OPENAI_BASE_URL'):
                 client_options["base_url"] = os.environ['OPENAI_BASE_URL']
-            # Keep the server response below the browser's 25-second UX timeout.
-            client_options["timeout"] = 20.0
+            # Finish before the browser's 45-second UX timeout.
+            client_options["timeout"] = 42.0
             client_options["max_retries"] = 0
             client = OpenAI(**client_options)
             user_input = json.dumps(payload, ensure_ascii=False)
