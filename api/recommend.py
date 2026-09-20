@@ -3,7 +3,7 @@ import os
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import urlparse
-from openai import OpenAI, APIError, APIConnectionError, RateLimitError
+from openai import OpenAI, APIError, APIConnectionError, APIStatusError, RateLimitError
 
 SCHEMA = {
     "type": "object", "additionalProperties": False,
@@ -93,5 +93,13 @@ class handler(BaseHTTPRequestHandler):
             self._send(200, result)
         except (json.JSONDecodeError, ValueError): self._send(400, {"message":"요청 형식을 읽지 못했어요. 다시 시도해 주세요."})
         except RateLimitError: self._send(429, {"message":"추천 요청이 많아요. 잠시 후 다시 시도해 주세요."})
+        except APIStatusError as error:
+            messages = {
+                400: "AI 제공사가 요청 형식을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.",
+                401: "AI 인증에 실패했어요. Vercel의 API 키와 교육장 Base URL 설정을 확인해 주세요.",
+                403: "현재 교육용 API 키에 이 모델 사용 권한이 없어요. 교육장 안내의 지원 모델을 확인해 주세요.",
+                404: "교육장 API에서 요청한 모델 또는 Responses API 경로를 찾지 못했어요. 지원 모델을 확인해 주세요.",
+            }
+            self._send(error.status_code or 502, {"message": messages.get(error.status_code, "AI 추천 서비스가 요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.")})
         except (APIConnectionError, APIError): self._send(502, {"message":"AI 추천 서비스와 연결하지 못했어요. 잠시 후 다시 시도해 주세요."})
         except Exception: self._send(500, {"message":"추천을 만드는 중 서버 오류가 발생했어요. 잠시 후 다시 시도해 주세요."})
