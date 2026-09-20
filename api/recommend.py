@@ -95,7 +95,7 @@ class handler(BaseHTTPRequestHandler):
             schema_hint = json.dumps(SCHEMA, ensure_ascii=False)
             response = client.chat.completions.create(
                 model="gpt-5-mini",
-                max_tokens=1400,
+                max_tokens=2400,
                 messages=[
                     {"role": "system", "content": SYSTEM + "\n반드시 다음 JSON Schema의 모든 필드를 반환한다: " + schema_hint},
                     {"role": "user", "content": f"다음 사용자 입력으로 추천해줘: {user_input}"},
